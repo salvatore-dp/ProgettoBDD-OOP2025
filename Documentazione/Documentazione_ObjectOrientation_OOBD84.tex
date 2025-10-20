@@ -1,0 +1,313 @@
+\documentclass[a4paper, 12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{geometry}
+
+\geometry{a4paper, top=2.5cm, bottom=2.5cm, left=3cm, right=3cm}
+
+\begin{document}
+
+\begin{titlepage}
+    {
+        \centering      % Assicura la centratura
+        \scshape        % Applica lo stile Maiuscoletto (Small Caps) a tutto il blocco
+
+        {\large {\LARGE U}NIVERSITÀ DEGLI STUDI DI {\LARGE N}APOLI {\LARGE F}EDERICO II\par}
+        \vspace{0.25cm}
+
+        {\small DIPARTIMENTO DI INGEGNERIA ELETTRICA E TECNOLOGIE DELL'INFORMAZIONE\par}
+    }
+
+    \vspace{1cm}
+
+    \centering
+    {
+    \includegraphics[width=4cm]{pics/coverlogo.png}
+    }
+
+    \vspace{1cm}
+
+    {
+        \centering
+        \scshape
+        CORSO DI LAUREA IN INFORMATICA \\[0.5cm]
+        INSEGNAMENTO DI OBJECT ORIENTATION \\[0.5cm]
+        ANNO ACCADEMICO 2024/2025 \\
+    }
+
+    \vfill
+
+    % --- TITOLO PRINCIPALE ---
+    {
+        \centering % Centra il contenuto di questo blocco
+        \Large\bfseries
+
+        Documentazione per \\[1cm]
+        Diagramma delle classi di design\\[1cm]
+        Creazione e gestione codice sorgente Java (e Java Swing)
+    }
+
+    \vfill 
+
+    \begin{minipage}[t]{0.4\textwidth}
+        \flushleft
+        \underline{Autore:}\\[0.3cm]
+        Salvatore DE PASQUALE \\
+        MATRICOLA N86005746 \\
+        \texttt{salvat.depasquale@studenti.unina.it} \\[0.5cm] % Mantenuto \texttt{} qui
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.4\textwidth}
+        \flushleft
+        \underline{Docente:}\\[0.3cm]
+        Prof. Sergio DI MARTINO
+    \end{minipage}
+
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+% ====================================================
+\section{Introduzione}
+% ====================================================
+Questo documento descrive l'architettura e l'implementazione dell'applicazione Java per il progetto UninaFoodLab. L'applicazione, realizzata con Java e la libreria Swing per l'interfaccia grafica, permette agli utenti (Chef e Utenti) di interagire con un sistema di gestione per corsi di cucina. Le funzionalità principali includono la creazione e gestione di corsi, ricette e sessioni da parte degli Chef, l'iscrizione ai corsi e la conferma di partecipazione alle sessioni pratiche da parte degli Utenti. Lo Chef dispone inoltre di una sezione dove può calcolare, in base al numero di adesioni alla sessione, la quantità precisa di quanti ingredienti serviranno per tutti gli utenti iscritti. L'interazione con il database PostgreSQL è gestita tramite JDBC.
+
+% ====================================================
+\section{Struttura del Progetto Java}
+% ====================================================
+Il codice sorgente è organizzato in package secondo un sistema multi-strato (con DAO e Service) per promuovere la modularità, la separazione delle responsabilità e la manutenibilità.
+
+\begin{itemize}
+    \item it.uninafoodlab.model: Contiene le classi Java che rappresentano le entità del dominio applicativo. Queste classi fungono da contenitori di dati.
+    \item it.uninafoodlab.dao: Contiene le classi DAO (Data Access Object), responsabili dell'incapsulamento della logica di accesso ai dati persistenti nel database PostgreSQL. Utilizzano JDBC per eseguire query SQL.
+    \item it.uninafoodlab.util: Contiene la classe per la gestione delle connessioni JDBC.
+    \item it.uninafoodlab.service: Contiene le classi Service, che implementano la logica. Coordinano le operazioni, utilizzano i DAO per interagire con i dati e forniscono un'interfaccia di alto livello per il layer di presentazione (view).
+    \item it.uninafoodlab.view: Contiene le classi che costituiscono l'interfaccia grafica utente, implementata con Java Swing. Include le finestre principali (JFrame) e le finestre di dialogo modali (JDialog).
+\end{itemize}
+
+% ====================================================
+\section{Package it.uninafoodlab.model}
+% ====================================================
+Le classi in questo package sono semplici contenitori di dati con attributi privati e metodi getter/setter pubblici. Rappresentano le informazioni gestite dall'applicazione.
+
+\subsection{Adesione}
+Rappresenta lo stato di partecipazione di un Utente a una SessioneInPresenza.
+\begin{itemize}
+    \item usernameUtente: String - Identificativo dell'utente.
+    \item codFiscChef: String - Identificativo dello chef che tiene il corso.
+    \item titoloCorso: String - Titolo del corso.
+    \item titoloSessione: String - Titolo della sessione specifica.
+    \item dataAdesione: java.sql.Timestamp - Data e ora di creazione/modifica dell'adesione.
+    \item confermata: Boolean - Flag che indica se la partecipazione è confermata (true) o meno (false).
+\end{itemize}
+
+\subsection{Chef}
+Rappresenta un utente con privilegi di Chef.
+\begin{itemize}
+    \item codiceFiscale: String - Identificativo univoco dello Chef.
+    \item nome: String
+    \item cognome: String
+    \item email: String - Indirizzo email (usato anche per login).
+    \item passHash: String - Password per l'autenticazione.
+\end{itemize}
+
+\subsection{ComposizioneRicetta}
+Definisce la presenza e la quantità di un Ingrediente all'interno di una Ricetta.
+\begin{itemize}
+    \item codFiscChef: String
+    \item titoloRicetta: String
+    \item dataCreazioneRicetta: java.time.LocalDateTime
+    \item nomeIngrediente: String - Nome dell'ingrediente utilizzato.
+    \item quantitaIngrediente: double - Quantità numerica.
+    \item unitaSpecIngrediente: String - Unità di misura (es. "g", "ml").
+\end{itemize}
+
+\subsection{Corso}
+Rappresenta un corso offerto da uno Chef.
+\begin{itemize}
+    \item codFiscChef: String - Identificativo dello chef proprietario.
+    \item titolo: String - Titolo univoco del corso per quello chef.
+    \item frequenza: String - Descrizione della frequenza (es. "settimanale").
+    \item dataInizio: java.time.LocalDate - Data di inizio del corso.
+\end{itemize}
+
+\subsection{Ingrediente}
+Rappresenta un ingrediente alimentare di base.
+\begin{itemize}
+    \item nomeIngrediente: String - Nome univoco dell'ingrediente.
+    \item descrizioneIngrediente: String - Descrizione opzionale.
+\end{itemize}
+
+\subsection{Iscrizione}
+Rappresenta l'associazione tra un Utente e un Corso a cui è iscritto.
+\begin{itemize}
+    \item usernameUtente: String
+    \item codFiscChef: String
+    \item titoloCorso: String
+    \item dataIscrizione: java.sql.Timestamp - Data e ora dell'iscrizione.
+\end{itemize}
+
+\subsection{ProgrammaSessione}
+Associa una Ricetta a una SessioneInPresenza, specificando le porzioni per partecipante.
+\begin{itemize}
+    \item codFiscChef: String
+    \item titoloRicetta: String
+    \item dataCreazioneRicetta: java.time.LocalDateTime
+    \item titoloCorso: String
+    \item titoloSessione: String
+    \item porzioniPerPartecipante: double - Numero di porzioni della ricetta da preparare per ogni partecipante confermato.
+\end{itemize}
+
+\subsection{Ricetta}
+Descrive una ricetta creata da uno Chef.
+\begin{itemize}
+    \item codFiscChef: String
+    \item titoloRicetta: String
+    \item descrizione: String - Testo descrittivo della ricetta.
+    \item difficolta: String - Livello di difficoltà (es. "facile").
+    \item tempoPrep: int - Tempo di preparazione stimato in minuti.
+    \item porzioni: int - Numero di porzioni standard prodotte dalla ricetta.
+    \item dataCreazione: java.time.LocalDateTime - Data e ora di creazione della ricetta.
+\end{itemize}
+
+\subsection{SessioneInPresenza}
+Rappresenta una lezione o evento di un Corso che si tiene in un luogo fisico.
+\begin{itemize}
+    \item codFiscChef: String
+    \item titoloCorso: String
+    \item titoloSessione: String - Titolo univoco della sessione per quel corso.
+    \item dataOra: java.time.LocalDateTime - Data e ora di svolgimento.
+    \item durata: int - Durata in minuti.
+    \item luogo: String - Indirizzo o nome del luogo.
+    \item postiTotali: int - Capienza massima.
+    \item postiDisponibili: int - Posti attualmente liberi.
+\end{itemize}
+
+\subsection{SessioneOnline}
+Rappresenta una lezione o evento di un Corso che si tiene online.
+\begin{itemize}
+    \item codFiscChef: String
+    \item titoloCorso: String
+    \item titoloSessione: String - Titolo univoco della sessione per quel corso.
+    \item dataOra: java.time.LocalDateTime - Data e ora di svolgimento.
+    \item durata: int - Durata in minuti.
+    \item linkVideo: String - URL per accedere alla sessione online.
+\end{itemize}
+
+\subsection{Utente}
+Rappresenta un utente standard della piattaforma (non Chef).
+\begin{itemize}
+    \item username: String - Identificativo univoco dell'utente.
+    \item nome: String
+    \item cognome: String
+    \item email: String - Indirizzo email.
+    \item passHash: String - Password per l'autenticazione.
+\end{itemize}
+
+% ====================================================
+\section{Package it.uninafoodlab.dao}
+% ====================================================
+Questo package implementa i file DAO. Ogni classe è dedicata alla gestione della persistenza per una specifica classe del package model.
+
+\textbf{Responsabilità Principali:}
+\begin{itemize}
+    \item Eseguire operazioni CRUD (Create, Read, Update, Delete) sulla tabella corrispondente nel database PostgreSQL.
+    \item Utilizzare l'API JDBC (java.sql.*) per la connessione e l'esecuzione delle query.
+    \item Impiegare PreparedStatement per prevenire SQL Injection e migliorare le prestazioni.
+    \item Mappare i dati tra gli oggetti ResultSet (risultati delle query) e gli oggetti del package model.
+    \item Gestire le eccezioni SQLException.
+    \item Ottenere connessioni tramite la classe DBConnection e chiuderle correttamente usando try-with-resources.
+\end{itemize}
+
+\textbf{Classi DAO Implementate:}
+\begin{itemize}
+    \item AdesioneDAO: Metodi per inserire, leggere, aggiornare (updateConferma) e contare (countPartecipantiConfermati) le adesioni.
+    \item ChefDAO: Metodi per inserire, leggere (per PK o email), aggiornare ed eliminare Chef.
+    \item ComposizioneRicettaDAO: Metodi per aggiungere, leggere (singola o tutte per ricetta), aggiornare (quantità/unità) e rimuovere ingredienti da una ricetta.
+    \item CorsoDAO: Metodi per inserire, leggere (singolo, tutti, o per chef), aggiornare ed eliminare Corsi.
+    \item IngredienteDAO: Metodi per inserire, leggere (per nome o tutti), aggiornare ed eliminare Ingredienti base.
+    \item IscrizioneDAO: Metodi per inserire, leggere (singola o tutte per utente) ed eliminare Iscrizioni.
+    \item ProgrammaSessioneDAO: Metodi per aggiungere, leggere (singolo o tutto per sessione) e rimuovere ricette dal programma di una sessione.
+    \item RicettaDAO: Metodi per inserire, leggere (per PK o tutte per chef), aggiornare ed eliminare Ricette.
+    \item SessioneInPresenzaDAO: Metodi per inserire, leggere (singola, tutte, o per corso), aggiornare ed eliminare Sessioni In Presenza.
+    \item SessioneOnlineDAO: Metodi per inserire, leggere (singola, tutte, o per corso), aggiornare ed eliminare Sessioni Online.
+    \item UtenteDAO: Metodi per inserire, leggere (per username/email o tutti), aggiornare, eliminare Utenti e validare il login.
+\end{itemize}
+
+% ====================================================
+\section{Package it.uninafoodlab.util}
+% ====================================================
+Contiene classi di utilità generale.
+
+\subsection{DBConnection}
+Fornisce un punto centralizzato per ottenere connessioni al database PostgreSQL.
+\begin{itemize}
+    \item Contiene i parametri di connessione (URL, USER, PASSWORD) come costanti private statiche.
+    \item Esegue il caricamento del driver JDBC org.postgresql.Driver in un blocco statico.
+    \item Offre il metodo pubblico statico getConnection() che restituisce una nuova istanza di java.sql.Connection ad ogni chiamata, utilizzando DriverManager.getConnection().
+    \item Non implementa pattern Singleton per la connessione, affidando la gestione del ciclo di vita ai chiamanti (i DAO).
+\end{itemize}
+
+% ====================================================
+\section{Package it.uninafoodlab.service}
+% ====================================================
+Questo package contiene il cuore della logica applicativa, disaccoppiando la View dai dettagli dell'accesso ai dati.
+
+\subsection{ChefService}
+Incapsula la logica di business relativa alle azioni dello Chef.
+\begin{itemize}
+    \item Mantiene un riferimento all'oggetto Chef autenticato.
+    \item Contiene istanze di tutti i DAO necessari per le operazioni dello Chef.
+    \item Fornisce metodi di alto livello che orchestrano chiamate ai DAO, ad esempio:
+        \begin{itemize}
+            \item getMieiCorsi(), creaNuovoCorso(), aggiornaCorso(), eliminaCorso().
+            \item getMieRicette(), creaNuovaRicetta(), aggiornaRicetta(), eliminaRicetta().
+            \item getSessioni...DelCorso(), creaNuovaSessione...(), aggiornaSessione...(), eliminaSessione...().
+            \item getIngredientiDellaRicetta(), aggiungiIngredienteARicetta(), aggiornaIngredienteInRicetta(), rimuoviIngredienteDaRicetta(), creaNuovoIngrediente().
+            \item getProgrammaDellaSessione(), aggiungiRicettaAlProgramma(), rimuoviRicettaDalProgramma().
+            \item calcolaIngredientiPerSessione(): Logica chiave per il report, che interroga AdesioneDAO, ProgrammaSessioneDAO e ComposizioneRicettaDAO per calcolare il fabbisogno aggregato.
+        \end{itemize}
+\end{itemize}
+
+\subsection{UserService}
+Incapsula la logica di business relativa alle azioni dell'Utente standard.
+\begin{itemize}
+    \item Mantiene un riferimento all'oggetto Utente autenticato.
+    \item Contiene istanze dei DAO necessari per le operazioni dell'Utente.
+    \item Fornisce metodi di alto livello, ad esempio:
+        \begin{itemize}
+            \item getTuttiICorsi(), getCorsiDisponibili(), getLeMieIscrizioni(), getMieiCorsiIscritto().
+            \item iscrivitiACorso(): Oltre a registrare l'iscrizione, crea anche le Adesione preliminari (con confermata=false) per le sessioni in presenza.
+            \item disiscrivitiDaCorso().
+            \item getSessioni...DelCorso().
+            \item getMiaAdesionePerSessione(), aggiornaConfermaAdesione(): Permettono di leggere e modificare lo stato di conferma per una sessione pratica.
+        \end{itemize}
+\end{itemize}
+
+% ====================================================
+\section{Package it.uninafoodlab.view}
+% ====================================================
+Implementa l'interfaccia utente grafica utilizzando Java Swing. Le classi in questo package interagiscono con l'utente e utilizzano i Service per eseguire le operazioni richieste.
+
+\subsection{Classi Principali}
+\begin{itemize}
+    \item Main: Contiene il metodo main() che avvia l'applicazione creando e rendendo visibile la LoginFrame all'interno dell'Event Dispatch Thread (EDT) di Swing tramite SwingUtilities.invokeLater.
+    \item LoginFrame (JFrame): Schermata iniziale per l'autenticazione. Utilizza JTextField, JPasswordField, JCheckBox e JButton. Chiama UtenteDAO o ChefDAO per la validazione. In caso di successo, istanzia il UserService o ChefService appropriato e apre la UserMainFrame o ChefMainFrame, passando l'oggetto utente/chef e il service.
+    \item RegisterUserFrame (JFrame): Permette la registrazione di nuovi utenti standard. Utilizza JTextField, JPasswordField, JButton.
+    \item ChefMainFrame (JFrame): Dashboard dello Chef. Strutturata con JTabbedPane ("Gestione Corsi", "Gestione Ricette", "Report Ingredienti"). Ogni tab contiene pannelli con JList, JButton, JComboBox, JTextArea ecc. Utilizza DefaultListModel per gestire dinamicamente il contenuto delle liste. Aggiunge ActionListener ai pulsanti e ListSelectionListener alle liste per gestire l'interazione. Chiama metodi del ChefService per popolare le viste ed eseguire azioni. Apre dialoghi modali (JDialog) per operazioni specifiche.
+    \item UserMainFrame (JFrame): Dashboard dell'Utente. Strutturata per mostrare liste di corsi (disponibili e iscritti) e sessioni (online e in presenza). Utilizza JList con DefaultListModel. Permette iscrizione/disiscrizione ai corsi, conferma/annullamento partecipazione a sessioni pratiche, e visualizzazione dettagli sessioni (con link cliccabile per quelle online). Chiama metodi dell'UserService.
+\end{itemize}
+
+\subsection{Dialoghi Modali (JDialog)}
+Queste finestre bloccano l'interazione con la finestra genitore finché non vengono chiuse. Sono usate principalmente dalla ChefMainFrame.
+\begin{itemize}
+    \item GestioneSessioniDialog: Permette il CRUD completo per SessioneOnline e SessioneInPresenza relative a un Corso selezionato. Contiene JList e JButton. Utilizza JOptionPane.showConfirmDialog con pannelli personalizzati per l'input. Apre GestioneProgrammaDialog.
+    \item GestioneIngredientiDialog: Permette di gestire la ComposizioneRicetta per una Ricetta selezionata. Contiene JList, JComboBox, JTextField, JButton. Apre JOptionPane per creare nuovi ingredienti.
+    \item GestioneProgrammaDialog: Permette di gestire il ProgrammaSessione per una SessioneInPresenza selezionata. Contiene JList, JComboBox, JTextField, JButton.
+\end{itemize}
+
+\end{document}
